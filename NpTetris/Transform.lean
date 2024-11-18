@@ -10,9 +10,10 @@ example :
   = (Multiplicative.ofAdd ⟨6,8⟩ : Position)
 := by
   rw [<- ofAdd_add]
-  simp
+  simp only [Prod.mk_add_mk, Int.reduceAdd]
 
 private def four_rot : GaussianInt := {re := 0, im := 1}
+@[local simp]
 private theorem elim_four_rot : four_rot ^ 4 = 1 := rfl
 
 /-- Rotations on gaussian integers by 90 degrees -/
@@ -20,14 +21,15 @@ def aut_rot_gaussian (rotation : Rotation) : AddAut GaussianInt where
 toFun p := (four_rot ^ rotation.toAdd.val) * p
 invFun p := (four_rot ^ (4 - rotation.toAdd.val)) * p
 left_inv _ := by
-  dsimp
-  rw [<- mul_assoc, <- pow_add, Nat.sub_add_cancel, elim_four_rot]
-  simp only [Int.reduceNeg, one_mul]
+  dsimp only
+  rw [<- mul_assoc, <- pow_add, Nat.sub_add_cancel]
+  simp only [elim_four_rot, one_mul]
   exact ZMod.val_le rotation.toAdd
 right_inv _ := by
-  dsimp
-  rw [<- mul_assoc, <- pow_add, <- Nat.add_sub_assoc, add_comm, Nat.add_sub_cancel, elim_four_rot]
-  simp
+  -- Almost the same proof, but some numbers are switched around
+  dsimp only
+  rw [<- mul_assoc, <- pow_add, <- Nat.add_sub_assoc, add_comm, Nat.add_sub_cancel]
+  simp only [elim_four_rot, one_mul]
   exact ZMod.val_le rotation.toAdd
 map_add' _ _ := by ring
 
@@ -51,6 +53,21 @@ left_inv _ := by simp
 right_inv _ := by simp
 map_mul' _ _ := by simp
 
+theorem four_rot_equiv_z4 (x y : ZMod 4) :
+  four_rot ^ (x + y).val = four_rot ^ x.val * four_rot ^ y.val
+:= by
+  let k := x.val + y.val
+  rcases Nat.lt_or_ge k 4 with lt | ge
+  · rw [ZMod.val_add_of_lt, pow_add]
+    exact lt
+  · rw [<- pow_add, ZMod.val_add_val_of_le ge, pow_add, elim_four_rot, mul_one]
+
+theorem aut_rot_linear (r₁ r₂ : Rotation) (p : Position) :
+  aut_rot (r₁ * r₂) p = aut_rot r₁ (aut_rot r₂ p)
+:= by
+  simp [aut_rot, aut_rot_additive, aut_rot_gaussian]
+  rw [<- mul_assoc, four_rot_equiv_z4]
+
 def rotation_hom : Rotation →* (MulAut Position) where
 toFun := aut_rot
 map_mul' x y := by
@@ -58,40 +75,28 @@ map_mul' x y := by
   simp [aut_rot, aut_rot_additive, aut_rot_gaussian]
   rw [<- mul_assoc]
   congr
-  let k := (Multiplicative.toAdd x).val + (Multiplicative.toAdd y).val
-  rcases Nat.lt_or_ge k 4 with lt | ge
-  · rw [ZMod.val_add_of_lt, pow_add]
-    exact lt
-  · calc
-      _ = four_rot ^ (k - 4) := by rw [ZMod.val_add_of_le ge]
-      _ = four_rot ^ (k - 4) * four_rot ^ 4 := by rw [elim_four_rot, mul_one]
-      _ = _ := by rw [<- pow_add, Nat.sub_add_cancel, pow_add]; exact ge
+  apply four_rot_equiv_z4
 map_one' := by
   ext s
   simp [aut_rot, aut_rot_additive, aut_rot_gaussian]
 
-theorem rotation_hom_inv_lemma (x y : ZMod 4) :
-  four_rot ^ (4 - (x + y).val) = four_rot ^ (4 - x.val) * four_rot ^ (4 - y.val)
-:= by
-  rw [<- pow_add, <- Nat.sub_add_comm, <- Nat.add_sub_assoc, Nat.sub_sub, add_comm y.val]
-  let k := x.val + y.val
-  rcases Nat.lt_or_ge k 4 with lt | ge
-  · rw [Nat.add_sub_assoc, ZMod.val_add_of_lt, pow_add, elim_four_rot, one_mul]
-    exact lt
-    exact Nat.le_of_succ_le lt
-  · rw [ZMod.val_add_val_of_le ge, <- Nat.sub_sub, Nat.sub_right_comm]
-  repeat apply ZMod.val_le
+abbrev Transform := Position ⋊[rotation_hom] Rotation
+instance : SMul Transform Position where
+smul := by
+  rintro ⟨translate, rotate⟩ pos
+  exact rotation_hom rotate pos * translate
 
-def rotation_hom_inv : Rotation →* (MulAut Position) where
-toFun rot := (aut_rot rot).symm
-map_mul' x y := by
-  ext s
-  simp [aut_rot, aut_rot_additive, aut_rot_gaussian]
-  rw [<- mul_assoc]
-  congr
-  apply rotation_hom_inv_lemma
-map_one' := by
-  ext s
-  simp [aut_rot, aut_rot_additive, aut_rot_gaussian, elim_four_rot]
+theorem Transform.smul_def (t : Transform) (p : Position) :
+  t • p = rotation_hom t.right p * t.left
+:= rfl
+theorem Transform.one_def :
+  (1 : Transform) = ⟨Multiplicative.ofAdd 0, Multiplicative.ofAdd 0⟩
+:= rfl
 
-def Transform := Position ⋊[rotation_hom_inv] Rotation
+instance : MulAction Transform Position where
+one_smul _ := by
+  rw [Transform.one_def, Transform.smul_def]
+  simp
+mul_smul x y p := by
+  simp [Transform.smul_def, rotation_hom]
+  rw [aut_rot_linear, mul_comm x.left, mul_assoc]
