@@ -51,34 +51,47 @@ left_inv _ := by simp
 right_inv _ := by simp
 map_mul' _ _ := by simp
 
-/- TODO find out whether this lemma needs to be done by cases -/
-/-- Before that, we need that that multiples of powers of i are isomorphic to addition in Z4 -/
-private theorem z4_equiv_four_rot_powers (x y : ZMod 4) :
-  four_rot ^ (x + y).val = (four_rot ^ x.val) * (four_rot ^ (y.val))
-:= by
-  let k := x.val + y.val
-  rcases Nat.lt_or_ge k 4 with lt | ge
-  · rw [ZMod.val_add_of_lt, pow_add]
-    exact lt
-  · calc
-      _ = four_rot ^ (x.val + y.val - 4) := by rw [ZMod.val_add_of_le ge]
-      _ = four_rot ^ (x.val + y.val - 4) * four_rot ^ 4 := by rw [elim_four_rot, mul_one]
-      _ = _ := by rw [<- pow_add, Nat.sub_add_cancel, pow_add]; exact ge
-
 def rotation_hom : Rotation →* (MulAut Position) where
 toFun := aut_rot
 map_mul' x y := by
   ext s
-  unfold aut_rot
-  unfold aut_rot_additive
-  unfold aut_rot_gaussian
-  simp
-  rw [z4_equiv_four_rot_powers, mul_assoc]
+  simp [aut_rot, aut_rot_additive, aut_rot_gaussian]
+  rw [<- mul_assoc]
+  congr
+  let k := (Multiplicative.toAdd x).val + (Multiplicative.toAdd y).val
+  rcases Nat.lt_or_ge k 4 with lt | ge
+  · rw [ZMod.val_add_of_lt, pow_add]
+    exact lt
+  · calc
+      _ = four_rot ^ (k - 4) := by rw [ZMod.val_add_of_le ge]
+      _ = four_rot ^ (k - 4) * four_rot ^ 4 := by rw [elim_four_rot, mul_one]
+      _ = _ := by rw [<- pow_add, Nat.sub_add_cancel, pow_add]; exact ge
 map_one' := by
   ext s
-  unfold aut_rot
-  unfold aut_rot_additive
-  unfold aut_rot_gaussian
-  simp
+  simp [aut_rot, aut_rot_additive, aut_rot_gaussian]
 
-def Transform := Position ⋊[rotation_hom] Rotation
+theorem rotation_hom_inv_lemma (x y : ZMod 4) :
+  four_rot ^ (4 - (x + y).val) = four_rot ^ (4 - x.val) * four_rot ^ (4 - y.val)
+:= by
+  rw [<- pow_add, <- Nat.sub_add_comm, <- Nat.add_sub_assoc, Nat.sub_sub, add_comm y.val]
+  let k := x.val + y.val
+  rcases Nat.lt_or_ge k 4 with lt | ge
+  · rw [Nat.add_sub_assoc, ZMod.val_add_of_lt, pow_add, elim_four_rot, one_mul]
+    exact lt
+    exact Nat.le_of_succ_le lt
+  · rw [ZMod.val_add_val_of_le ge, <- Nat.sub_sub, Nat.sub_right_comm]
+  repeat apply ZMod.val_le
+
+def rotation_hom_inv : Rotation →* (MulAut Position) where
+toFun rot := (aut_rot rot).symm
+map_mul' x y := by
+  ext s
+  simp [aut_rot, aut_rot_additive, aut_rot_gaussian]
+  rw [<- mul_assoc]
+  congr
+  apply rotation_hom_inv_lemma
+map_one' := by
+  ext s
+  simp [aut_rot, aut_rot_additive, aut_rot_gaussian, elim_four_rot]
+
+def Transform := Position ⋊[rotation_hom_inv] Rotation
