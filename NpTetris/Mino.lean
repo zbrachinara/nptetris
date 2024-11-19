@@ -1,29 +1,34 @@
 import NpTetris.Transform
-import NpTetris.Collection
 
+def one_off' : Set (ℤ × ℤ) := {(1, 0), (0, 1), (-1, 0), (0, -1)}
+def one_off : Set Position := { Multiplicative.ofAdd x | x ∈ one_off'}
 
-def Vec.map {α β n} (f : α → β) (v : Vec α n) : Vec β n := by
-  have ⟨l, H_length⟩ := v
-  refine ⟨l.map f, ?g⟩
-  rw [List.length_map]
-  exact H_length
+inductive Connected : Finset Position → Prop where
+| triv set : set.card <= 1 → Connected set
+| cons point (set' : Finset Position) :
+    (∃ point' ∈ set', point⁻¹ * point' ∈ one_off) → Connected (insert point set')
 
-theorem Vec.map_id {α n} (v : Vec α n) : v.map (fun x ↦ x) = v := by
-  unfold map
-  simp
-  exact rfl
+structure Points (size : ℕ) where
+  points: Finset Position
+  connected: Connected points
 
-def Points size := Vec Position size
+/-- Transforming a set of points preserves connectedness -/
+instance (size : ℕ): MulAction Transform (Points size) where
+smul := sorry
+one_smul := sorry
+mul_smul := sorry
 
-instance {n: _} : Setoid (Points n) where
-  r a b := ∃ t : Transform, (a.map (fun p => t • p)).congruent b
+instance transform_independent (n: _) : Setoid (Points n) where
+  r a b := ∃ t : Transform, t • a = b
   iseqv := by
     apply Equivalence.mk
-    case refl =>
-      intro x
-      exists 1
-      simp
-      rw [Vec.map_id]
-      sorry
+    case refl => sorry
     case symm => sorry
     case trans => sorry
+
+def Shape (n : ℕ) := Quotient (transform_independent n)
+
+structure Mino (n : ℕ) where
+  shape : Shape n
+  position : Position
+  rotation : Rotation
