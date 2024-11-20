@@ -105,8 +105,7 @@ mul_smul a b p := by
     assumption
     rw [mul_smul, p2_to_p1, p1_to_k]
 
-instance transform_independent (n: _) : Setoid (Points n) := MulAction.orbitRel Transform (Points n)
-def Shape (n : ℕ) := Quotient (transform_independent n)
+def Shape (n : ℕ) := MulAction.orbitRel.Quotient Transform (Points n)
 
 /-- TODO define rotation and translation operations, may also need a center of rotation -/
 structure Mino (n : ℕ) where
