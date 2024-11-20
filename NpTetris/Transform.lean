@@ -12,7 +12,7 @@ example :
   rw [<- ofAdd_add]
   simp only [Prod.mk_add_mk, Int.reduceAdd]
 
-private def four_rot : GaussianInt := {re := 0, im := 1}
+def four_rot : GaussianInt := {re := 0, im := 1}
 @[local simp]
 private theorem elim_four_rot : four_rot ^ 4 = 1 := rfl
 
@@ -80,6 +80,13 @@ map_one' := by
   ext s
   simp [aut_rot, aut_rot_additive, aut_rot_gaussian]
 
+theorem neg_rotation (r : Rotation) (p : Position) :
+  (rotation_hom r p)⁻¹ = rotation_hom r (p⁻¹)
+:= by simp [rotation_hom]
+theorem rotation_distrib (r : Rotation) (p₁ p₂ : Position) :
+  (rotation_hom r) (p₁ * p₂) = (rotation_hom r p₁) * (rotation_hom r p₂)
+:= by simp [rotation_hom]
+
 abbrev Transform := Position ⋊[rotation_hom] Rotation
 instance : SMul Transform Position where
 smul := by
@@ -93,10 +100,29 @@ theorem Transform.one_def :
   (1 : Transform) = ⟨Multiplicative.ofAdd 0, Multiplicative.ofAdd 0⟩
 := rfl
 
-instance : MulAction Transform Position where
+instance: MulAction Transform Position where
 one_smul _ := by
   rw [Transform.one_def, Transform.smul_def]
   simp
 mul_smul x y p := by
   simp [Transform.smul_def, rotation_hom]
   rw [aut_rot_linear, mul_comm x.left, mul_assoc]
+
+@[simp]
+theorem Transform.invert (t : Transform) (p : Position) :
+  (t • p)⁻¹ = (⟨t.left⁻¹, t.right⟩ : Transform)  • (p⁻¹)
+:= by
+  repeat rw [Transform.smul_def]
+  simp
+  rw [mul_comm]
+
+theorem norm_four_rot (r : ZMod 4): Zsqrtd.norm (four_rot ^ r.val) = 1 := by
+  have ⟨p, q⟩ := r
+  induction p
+  case zero => rfl
+  case succ n ih =>
+    have ih := ih (Nat.lt_of_succ_lt q)
+    have (k: Nat) (q : k < 4) : @ZMod.val 4 (⟨k, q⟩: ZMod 4) = k := by exact rfl
+    rw [this] at ih
+    rw [this, pow_add, Zsqrtd.norm_mul, ih, one_mul, pow_one]
+    rfl
