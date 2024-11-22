@@ -45,7 +45,7 @@ inj' := MulAction.injective t
   manipulated by translation or rotation. The number of points also remains the same between
   transformations, so this easy fact comes pre-encoded into the type. -/
 @[ext]
-structure KMino (k : ℕ) where
+structure KMino (k : ℕ+) where
   points: Finset Position
   connected: Connected points
   boundable : points.card = k
@@ -112,14 +112,26 @@ mul_smul a b p := by
 def Shape (bound) := MulAction.orbitRel.Quotient Transform (KMino bound)
 
 /-- A type which encompasses all k-minos ≤k -/
-structure BoundedMino (k : ℕ) where
-  t : ℕ
+structure BoundedMino (k : ℕ+) where
+  t : ℕ+
   val : KMino t
   isLe : t ≤ k
 
 namespace KMino
 
 variable {k}
+
+/-- The maximum y-coordinate of the positions of a mino. -/
+def max_height (m : KMino k) : ℤ := by
+  apply Finset.max'
+  case s =>
+    apply m.points.image
+    intro pos
+    exact pos.snd
+  rw [Finset.image_nonempty]
+  apply Finset.card_pos.mp
+  rw [m.boundable]
+  exact PNat.pos k
 
 /-- Produces the shape of the given mino -/
 def shape (m : KMino k) : Shape k := Quotient.mk _ m
@@ -129,28 +141,23 @@ structure ManeuverStep (k₁ k₂ : KMino k) : Prop where
 shapes_id : k₁.shape = k₂.shape
 touching : ∃ p₁ ∈ k₁.points, ∃ p₂ ∈ k₂.points, p₁ = p₂ ∨ p₁⁻¹ * p₂ ∈ one_off
 
-def Path := List (KMino k)
+abbrev Path := List (KMino k)
 
-inductive ManeuverPath : @Path k → Prop where
-| base p q: ManeuverStep p q → ManeuverPath [p, q]
+inductive Maneuver : @Path k → Prop where
+| base p q: ManeuverStep p q → Maneuver [p, q]
 | cons l mino nonempty :
-    ManeuverPath l → ManeuverStep mino (l.head nonempty) → ManeuverPath (mino :: l)
+    Maneuver l → ManeuverStep mino (l.head nonempty) → Maneuver (mino :: l)
 
-theorem ManeuverPath.length_nz {list} (path : @ManeuverPath k list) : list ≠ [] := by
+theorem Maneuver.length_nz {list} (path : @Maneuver k list) : list ≠ [] := by
   cases path <;> apply List.cons_ne_nil
 
-def ManeuverPath.head {list} (path : @ManeuverPath k list) : KMino k := by
+def Maneuver.head {list} (path : @Maneuver k list) : KMino k := by
   apply list.head
-  apply ManeuverPath.length_nz
+  apply Maneuver.length_nz
   assumption
-def ManeuverPath.last {list} (path : @ManeuverPath k list) : KMino k := by
+def Maneuver.last {list} (path : @Maneuver k list) : KMino k := by
   apply list.getLast
-  apply ManeuverPath.length_nz
+  apply Maneuver.length_nz
   assumption
-
-/-- Piece `k₁` can be maneuvered to `k₂` through the given list of in-between states. This
-  proposition on its own says nothing about obstructions -- we will get to that later. -/
-structure maneuverable (k₁ k₂ : KMino k) (path : List (KMino k)) : Prop where
-maneuver : ManeuverPath (k₁ :: path ++ [k₂])
 
 end KMino
