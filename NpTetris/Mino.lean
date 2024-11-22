@@ -28,9 +28,7 @@ theorem rotation_preserves_one_off (p : Position) (r : Rotation) :
     lhs; rw [mul_comm]
   rw [<- add_assoc]
   repeat rw [<- add_mul]
-  rw [add_comm (_ ^ _)]
-  rw [norm_is_id_lemma]
-  simp
+  rw [add_comm (_ ^ _), norm_is_id_lemma, one_mul, one_mul]
   assumption
 
 inductive Connected : Finset Position → Prop where
@@ -38,11 +36,14 @@ inductive Connected : Finset Position → Prop where
 | cons point (set' : Finset Position) :
     (∃ point' ∈ set', point⁻¹ * point' ∈ one_off) → Connected (insert point set')
 
+/-- The core of what k-tris is. The mino is a connected set of points in Z^2, which can be
+  manipulated by translation or rotation. The number of points also remains the same between
+  transformations, so this easy fact comes pre-encoded into the type. -/
 @[ext]
-structure Points (size : ℕ) where
+structure KMino (k : ℕ) where
   points: Finset Position
   connected: Connected points
-  sized : points.card = size
+  boundable : points.card = k
 
 @[simp]
 def transform_map (t : Transform) : Position ↪ Position where
@@ -50,12 +51,12 @@ toFun := (t • ·)
 inj' := MulAction.injective t
 
 /-- Transforming a set of points preserves connectedness -/
-instance (size : ℕ) : SMul Transform (Points size) where
+instance (bound) : SMul Transform (KMino bound) where
 smul := by
   rintro t ⟨points, conn, sized⟩
-  apply Points.mk
+  apply KMino.mk
   case mk.points => exact points.map (transform_map t)
-  case mk.sized => simp only [Finset.card_map]; assumption -- trivial
+  case mk.boundable => rw [Finset.card_map]; assumption -- trivial
   case mk.connected =>
     induction conn
     case triv set card =>
@@ -81,12 +82,12 @@ smul := by
         assumption
 
 @[simp]
-theorem Transform.smul_points_def {n : ℕ} (t : Transform) (p : Points n) :
+theorem Transform.smul_points_def {b} (t : Transform) (p : KMino b) :
   (t • p).points = p.points.map (transform_map t)
 := rfl
 
 /-- The rest of the group action axioms easily follow -/
-instance (size : ℕ) : MulAction Transform (Points size) where
+instance {b} : MulAction Transform (KMino b) where
 one_smul _ := by ext; simp
 mul_smul a b p := by
   ext k
@@ -105,10 +106,19 @@ mul_smul a b p := by
     assumption
     rw [mul_smul, p2_to_p1, p1_to_k]
 
-def Shape (n : ℕ) := MulAction.orbitRel.Quotient Transform (Points n)
+/-- A mino which cares not for its place in the world. No matter what rotation and translation are
+  applied to a mino, its shape must be preserved. This type serves as a convenience to encode this
+  fact -- if two minos have the same shape, they are equal in `Shape`. -/
+def Shape (bound) := MulAction.orbitRel.Quotient Transform (KMino bound)
+/-- Produces the shape of the given mino -/
+def KMino.shape {k} (m : KMino k) : Shape k := Quotient.mk _ m
 
-/-- TODO define rotation and translation operations, may also need a center of rotation -/
-structure Mino (n : ℕ) where
-  shape : Shape n
-  position : Position
-  rotation : Rotation
+structure BoundedMino (k : ℕ) where
+  t : ℕ
+  val : KMino t
+  isLt : t < k
+
+/-- A relation between two minos that says that one can be maneuvered into the other. -/
+structure Maneuverable {n} (k₁ k₂ : KMino n) : Prop where
+shapes_id : k₁.shape = k₂.shape
+touching : ∃ p₁ ∈ k₁.points, ∃ p₂ ∈ k₂.points, p₁ = p₂ ∨ p₁⁻¹ * p₂ ∈ one_off
