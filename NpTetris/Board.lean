@@ -25,17 +25,23 @@ def points (board : Board n m) : Finset Position := board.map position_map
 instance : HSub (Board n m) (Board n m) (Finset Position) where
 hSub final initial := (final \ initial).points
 
-
-/-- If these conditions are satisfied, then starting from an `initial` board, a mino can spawn at
-`spawned`, maneuver through path `path`, and be locked at `locked` to step the board to `final`. -/
-structure step' {k} {path : @KMino.Path k}
-  (maneuver : KMino.Maneuver path) (initial final : Board n m)
+/-- If these conditions are satisfied, then a mino with the given shape can step the board from the
+  initial state to the final state. -/
+structure step {k} {path : @KMino.Path k} {maneuver : KMino.Maneuver path}
+  (shape : Shape k) (initial final : Board n m)
 where
 /-- The difference between the two boards is exactly where the path ends -/
-valid_difference : maneuver.last.points = final - initial
+diff_correct : maneuver.last.points = final - initial
+/-- The shape of the mino described in the maneuver is exactly the one being considered. -/
+shape_correct : maneuver.head.shape = shape
 /-- The path begins at the top of the board -/
 spawn_at_top : maneuver.last.max_height = m
 /-- No point on the path intersects `initial` -/
 no_intersections (m : @KMino k) : m ∈ path → m.points ∩ initial.points = ∅
 
 end Board
+
+/-- A game of k-tris parameterized by its queue, initial state, and final state -/
+inductive KTris {n m k} : List (Shape k) → Board n m → Board n m → Prop where
+| triv board : KTris [] board board
+| step shape steps b₁ b₂ b₃ : KTris steps b₁ b₂ → b₂.step shape b₃ → KTris (shape :: steps) b₁ b₃
