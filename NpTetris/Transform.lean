@@ -3,7 +3,7 @@ import Mathlib
 /-- Translates addition into "multiplication" -/
 
 abbrev Position := Multiplicative (ℤ × ℤ)
-abbrev Rotation := Multiplicative (ZMod 4)
+abbrev Rotation := Multiplicative (ZMod 4) -- TODO maybe use Fin instead
 
 example :
   (Multiplicative.ofAdd ⟨2,3⟩) * (Multiplicative.ofAdd ⟨4,5⟩)
@@ -100,6 +100,7 @@ theorem Transform.one_def :
   (1 : Transform) = ⟨Multiplicative.ofAdd 0, Multiplicative.ofAdd 0⟩
 := rfl
 
+-- TODO could ease notational burden by translating to an AddAction
 instance: MulAction Transform Position where
 one_smul _ := by
   rw [Transform.one_def, Transform.smul_def]
