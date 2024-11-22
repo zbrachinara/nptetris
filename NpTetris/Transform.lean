@@ -19,6 +19,22 @@ example :
 def four_rot : GaussianInt := {re := 0, im := 1}
 @[local simp]
 private theorem elim_four_rot : four_rot ^ 4 = 1 := rfl
+theorem elim_four_rot' {x: ℕ} : four_rot ^ (x % 4) = four_rot ^ x := by
+  induction x using Nat.strongRec with | ind n ih =>
+  cases Nat.lt_or_ge n 4
+  case inl =>
+    rw [Nat.mod_eq_of_lt]
+    assumption
+  case inr h =>
+    have n4: n - 4 < n := by
+      apply Nat.sub_lt
+      exact Nat.zero_lt_of_lt h
+      exact Nat.zero_lt_succ 3
+    have := ih (n - 4) n4
+    have : four_rot ^ ((n - 4) % 4) * four_rot ^ 4= four_rot ^ (n - 4) * four_rot ^ 4 := by congr
+    conv at this => lhs; rw [elim_four_rot]
+    rw [<- pow_add, Nat.sub_add_cancel, <- Nat.mod_eq_sub_mod, mul_one] at this
+    repeat assumption
 
 /-- Rotations on gaussian integers by 90 degrees -/
 def aut_rot_gaussian (rotation : Rotation) : AddAut GaussianInt where
@@ -64,7 +80,7 @@ theorem four_rot_equiv_z4 (x y : ZMod 4) :
   rcases Nat.lt_or_ge k 4 with lt | ge
   · rw [ZMod.val_add_of_lt, pow_add]
     exact lt
-  · rw [<- pow_add, ZMod.val_add_val_of_le ge, pow_add, elim_four_rot, mul_one]
+  · rw [<- pow_add, ZMod.val_add, elim_four_rot']
 
 theorem aut_rot_linear (r₁ r₂ : Rotation) (p : Position) :
   aut_rot (r₁ * r₂) p = aut_rot r₁ (aut_rot r₂ p)
