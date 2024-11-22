@@ -1,5 +1,4 @@
 import NpTetris.Mino
-import Mathlib
 
 /-- A rectangular playing field with width `n` (`n` columns) and height `m` (`m` rows). Coordinates
   increase from left to right and from bottom to top. -/

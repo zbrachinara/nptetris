@@ -1,4 +1,8 @@
-import Mathlib
+import Mathlib.Algebra.Group.TypeTags
+import Mathlib.Data.ZMod.Basic
+import Mathlib.Data.ZMod.Defs
+import Mathlib.GroupTheory.SemidirectProduct
+import Mathlib.NumberTheory.Zsqrtd.GaussianInt
 
 /-- Translates addition into "multiplication" -/
 
