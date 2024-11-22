@@ -119,6 +119,28 @@ structure BoundedMino (k : ℕ) where
   isLt : t < k
 
 /-- A relation between two minos that says that one can be maneuvered into the other. -/
-structure Maneuverable {n} (k₁ k₂ : KMino n) : Prop where
+structure ManeuverStep {n} (k₁ k₂ : KMino n) : Prop where
 shapes_id : k₁.shape = k₂.shape
 touching : ∃ p₁ ∈ k₁.points, ∃ p₂ ∈ k₂.points, p₁ = p₂ ∨ p₁⁻¹ * p₂ ∈ one_off
+
+inductive ManeuverPath {n} : List (KMino n) → Prop where
+| base p q: ManeuverStep p q → ManeuverPath [p, q]
+| cons l mino nonempty :
+    ManeuverPath l → ManeuverStep mino (l.head nonempty) → ManeuverPath (mino :: l)
+
+theorem ManeuverPath.length_nz {n list} (path : @ManeuverPath n list) : list ≠ [] := by
+  cases path <;> apply List.cons_ne_nil
+
+def ManeuverPath.head {n list} (path : @ManeuverPath n list) : KMino n := by
+  apply list.head
+  apply ManeuverPath.length_nz
+  assumption
+def ManeuverPath.last {n list} (path : @ManeuverPath n list) : KMino n := by
+  apply list.getLast
+  apply ManeuverPath.length_nz
+  assumption
+
+/-- Piece `k₁` can be maneuvered to `k₂` through the given list of in-between states. This
+  proposition on its own says nothing about obstructions -- we will get to that later. -/
+structure Maneuverable {n} (k₁ k₂ : KMino n) (path : List (KMino n)) : Prop where
+maneuver : ManeuverPath (k₁ :: path ++ [k₂])
