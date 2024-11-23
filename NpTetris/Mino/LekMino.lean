@@ -3,15 +3,13 @@ import NpTetris.Mino.KMino
 /-- A type which encompasses all k-minos ≤k -/
 @[ext]
 structure LeKMino (k : ℕ+) where
-  t : ℕ+
-  val : KMino t
-  isLe : t ≤ k
+  t : Fin k
+  val : KMino ⟨t + 1, by apply Nat.zero_lt_succ⟩
 
 instance (bound) : SMul Transform (LeKMino bound) where
 smul a b := by
   constructor
   case val => exact a • b.val
-  exact b.isLe
 
 @[simp]
 theorem lower_lekmino_val {b} (t : Transform) (p : LeKMino b) :
@@ -28,22 +26,17 @@ mul_smul a b x := by
   repeat rw [lower_lekmino_val]
   rw [mul_smul]
 
-def LeKShape (bound) := MulAction.orbitRel.Quotient Transform (LeKMino bound)
+def LeKShape (bound) := orbit_quotient Transform (LeKMino bound)
 
 def LeKMino.shape {k} (mino : LeKMino k) : LeKShape k := Quotient.mk _ mino
 
-def LeKShape.t {b} (shape : LeKShape b) : ℕ+ := by
+def LeKShape.t {b} (shape : LeKShape b) : Fin b := by
   apply shape.lift
   case f => intro x; exact x.t
   intro p q pq
   cases pq with | intro t eq =>
   rw [<- eq]
   rfl
-
-theorem LeKShape.t_leq {b} (mino : LeKMino b) : LeKShape.t (⟦mino⟧ : LeKShape b) ≤ b := by
-  unfold t
-  simp
-  apply mino.isLe
 
 /-- There exist two minos which are absolutely identical, relating the shapes in each type -/
 structure LeKShape.shape_eq {k k'} {lekmino : LeKMino k'} {kmino : KMino k}

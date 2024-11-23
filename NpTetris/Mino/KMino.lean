@@ -1,4 +1,5 @@
 import NpTetris.Transform
+import NpTetris.MulActionQuotient
 
 def one_off' : Set (ℤ × ℤ) := {(p, q) : (ℤ × ℤ) | p^2 + q^2 = 1 }
 def one_off : Set Position := { Multiplicative.ofAdd x | x ∈ one_off'}
@@ -109,7 +110,7 @@ mul_smul a b p := by
 /-- A mino which cares not for its place in the world. No matter what rotation and translation are
   applied to a mino, its shape must be preserved. This type serves as a convenience to encode this
   fact -- if two minos have the same shape, they are equal in `Shape`. -/
-def KShape (bound) := MulAction.orbitRel.Quotient Transform (KMino bound)
+def KShape (bound) := orbit_quotient Transform (KMino bound)
 
 namespace KMino
 
