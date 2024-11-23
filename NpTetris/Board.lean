@@ -18,19 +18,28 @@ inj' := by
 
 def points (board : Board n m) : Finset Position := board.map position_map
 
+inductive lockable {k} (board : Board m n) (mino : KMino k) where
+| on_floor p : p ∈ mino.points → p.2 = 0 → lockable board mino
+| supported p : p ∈ board.points → p * Multiplicative.ofAdd (0, 1) ∈ mino.points → lockable board mino
+-- TODO better notation for position
+
 /-- If these conditions are satisfied, then a mino with this shape can maneuver through the path and
   lock onto the board to step it to the final state -/
 structure lock {k} {path : @KMino.Path k} {maneuver : KMino.Maneuver path}
   (shape : KShape k) (initial final : Board n m)
 where
-/-- The locking position of the path completes the board -/
-diff_correct : maneuver.last.points ∪ initial.points = final.points
-/-- The shape of the mino described in the maneuver is exactly the one being considered. -/
+/-- No point on the path intersects `initial` -/
+no_intersections m : m ∈ path → m.points ∩ initial.points = ∅
+/-- No point on the path leaves the board -/
+bounded p mino : mino ∈ path → p ∈ mino.points → ∃ fxy : Fin n × Fin m, position_map fxy = p
+/-- The shape of the mino described in the maneuver is the one supplied. -/
 shape_correct : maneuver.head.shape = shape
 /-- The path begins at the top of the board -/
 spawn_at_top : maneuver.head.max_height = m
-/-- No point on the path intersects `initial` -/
-no_intersections (m : @KMino k) : m ∈ path → m.points ∩ initial.points = ∅
+/-- The locking position of the path completes the board -/
+diff_correct : maneuver.last.points ∪ initial.points = final.points
+/-- The locking position is actually a locking position -/
+lockable : initial.lockable maneuver.last
 
 /-- A board can step from initial to final if the final board is a line clear on row `r` -/
 structure clear (r) (initial final : Board n m) where
