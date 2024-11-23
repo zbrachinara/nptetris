@@ -29,14 +29,16 @@ hSub final initial := (final \ initial).points
 structure step {k} {path : @KMino.Path k} {maneuver : KMino.Maneuver path}
   (shape : KShape k) (initial final : Board n m)
 where
-/-- The difference between the two boards is exactly where the path ends -/
-diff_correct : maneuver.last.points = final - initial
+-- /-- The difference between the two boards is exactly where the path ends -/
+-- diff_correct : maneuver.last.points = final - initial
 /-- The shape of the mino described in the maneuver is exactly the one being considered. -/
 shape_correct : maneuver.head.shape = shape
 /-- The path begins at the top of the board -/
-spawn_at_top : maneuver.last.max_height = m
+spawn_at_top : maneuver.head.max_height = m
 /-- No point on the path intersects `initial` -/
 no_intersections (m : @KMino k) : m ∈ path → m.points ∩ initial.points = ∅
+
+#print axioms step
 
 end Board
 

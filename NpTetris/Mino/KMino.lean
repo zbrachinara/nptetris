@@ -1,3 +1,5 @@
+import Mathlib.Data.Multiset.Fintype
+
 import NpTetris.Transform
 import NpTetris.MulActionQuotient
 
@@ -33,9 +35,9 @@ theorem rotation_preserves_one_off (p : Position) (r : Rotation) :
   assumption
 
 inductive Connected : Finset Position → Prop where
-| triv set : set.card <= 1 → Connected set
-| cons point (set' : Finset Position) :
-    (∃ point' ∈ set', point⁻¹ * point' ∈ one_off) → Connected (insert point set')
+| triv p : Connected {p}
+| cons point point' (set' : Finset Position) :
+    point' ∈ set' → point⁻¹ * point' ∈ one_off → Connected (insert point set')
 
 @[simp]
 def transform_map (t : Transform) : Position ↪ Position where
@@ -60,18 +62,12 @@ smul := by
   case mk.boundable => rw [Finset.card_map]; assumption -- trivial
   case mk.connected =>
     induction conn
-    case triv set card =>
+    case triv p =>
       apply Connected.triv
-      rw [Finset.card_map]
-      assumption
-    case cons pt points witness =>
+    case cons pt witness points wit_set wit_cond =>
       rw [Finset.map_insert]
-      apply Connected.cons
-      have ⟨witness, wit_mem, wit_cond⟩ := witness
-      exists (transform_map t) witness
-      apply And.intro
-      · rw [Finset.mem_map]
-        exists witness
+      apply Connected.cons _ (transform_map t witness)
+      · exact (Finset.mem_map' (transform_map t)).mpr wit_set
       · have ⟨t_left, t_right⟩ := t
         simp
         repeat rw [Transform.smul_def]
@@ -116,17 +112,42 @@ namespace KMino
 
 variable {k}
 
+theorem nonempty (m : KMino k) : Nonempty m.points := by
+  have ⟨points, connected, card⟩ := m
+  dsimp only
+  cases connected
+  case triv p => exists p; rw [Finset.mem_singleton]
+  case cons pt _ _ _ _ =>
+    exists pt
+    simp only [Finset.mem_insert, true_or]
+
+def Position.y' (t: Position) : WithBot ℤ := some t.2
+
 /-- The maximum y-coordinate of the positions of a mino. -/
 def max_height (m : KMino k) : ℤ := by
-  apply Finset.max'
-  case s =>
-    apply m.points.image
-    intro pos
-    exact pos.snd
-  rw [Finset.image_nonempty]
-  apply Finset.card_pos.mp
-  rw [m.boundable]
-  exact PNat.pos k
+  apply WithBot.unbot
+  case x =>
+    apply Multiset.sup
+    apply Multiset.map
+    case s => exact m.points.val
+    exact Position.y'
+  -- Proof that max_height is not unvalued
+  intro has_bottom
+  have pos : ¬∃ x, Position.y' x = ⊥ := by
+    push_neg
+    intro position pnone
+    unfold Position.y' at pnone
+    cases pnone
+  have neg : ∃ x, Position.y' x = ⊥ := by
+    have ⟨p, _⟩ := m.nonempty
+    exists p
+    apply bot_unique
+    rw [<- has_bottom]
+    apply Multiset.le_sup
+    apply Multiset.mem_map_of_mem
+    apply Finset.mem_def.mp
+    assumption
+  exact pos neg
 
 /-- Produces the shape of the given mino -/
 def shape (m : KMino k) : KShape k := Quotient.mk _ m
