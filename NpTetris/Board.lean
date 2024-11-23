@@ -27,7 +27,7 @@ hSub final initial := (final \ initial).points
 /-- If these conditions are satisfied, then a mino with the given shape can step the board from the
   initial state to the final state. -/
 structure step {k} {path : @KMino.Path k} {maneuver : KMino.Maneuver path}
-  (shape : Shape k) (initial final : Board n m)
+  (shape : KShape k) (initial final : Board n m)
 where
 /-- The difference between the two boards is exactly where the path ends -/
 diff_correct : maneuver.last.points = final - initial
@@ -41,6 +41,16 @@ no_intersections (m : @KMino k) : m ∈ path → m.points ∩ initial.points = �
 end Board
 
 /-- A game of k-tris parameterized by its queue, initial state, and final state -/
-inductive KTris {n m k} : List (Shape k) → Board n m → Board n m → Prop where
+inductive KTris {n m k} : List (KShape k) → Board n m → Board n m → Prop where
 | triv board : KTris [] board board
 | step shape steps b₁ b₂ b₃ : KTris steps b₁ b₂ → b₂.step shape b₃ → KTris (shape :: steps) b₁ b₃
+
+/-- A game of ≤k-tris parameterized by its queue, initial state, and final state. Unlike k-tris,
+  pieces can be of any size less than `k`, so many, many more conditions are possible. -/
+inductive LeKTris {n m k} : List (LeKShape k) → Board n m → Board n m → Prop where
+| triv board : LeKTris [] board board
+| step (lekshape : LeKShape k) kshape steps b₁ b₂ b₃ :
+  LeKTris steps b₁ b₂ →
+  lekshape.shape_eq kshape →
+  b₂.step kshape b₃ →
+  LeKTris (lekshape :: steps) b₁ b₃

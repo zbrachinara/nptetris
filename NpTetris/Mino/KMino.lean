@@ -109,7 +109,7 @@ mul_smul a b p := by
 /-- A mino which cares not for its place in the world. No matter what rotation and translation are
   applied to a mino, its shape must be preserved. This type serves as a convenience to encode this
   fact -- if two minos have the same shape, they are equal in `Shape`. -/
-def Shape (bound) := MulAction.orbitRel.Quotient Transform (KMino bound)
+def KShape (bound) := MulAction.orbitRel.Quotient Transform (KMino bound)
 
 namespace KMino
 
@@ -128,7 +128,7 @@ def max_height (m : KMino k) : ℤ := by
   exact PNat.pos k
 
 /-- Produces the shape of the given mino -/
-def shape (m : KMino k) : Shape k := Quotient.mk _ m
+def shape (m : KMino k) : KShape k := Quotient.mk _ m
 
 /-- A relation between two minos that says that one can be maneuvered into the other. -/
 structure ManeuverStep (k₁ k₂ : KMino k) : Prop where
