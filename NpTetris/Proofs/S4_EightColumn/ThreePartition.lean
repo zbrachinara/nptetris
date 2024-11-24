@@ -15,4 +15,6 @@ part : List (ℕ × ℕ × ℕ)
 partition_valid : part.foldr (λ ⟨a,b,c⟩ x ↦ {a,b,c} ∪ x) ∅ = int_set
 partitions_sum x y z : ⟨x,y,z⟩ ∈ part → x + y + z = T
 
+def solutions := { x | ∃ sol : problem.solution, x = sol.part }
+
 def partition_exists := Inhabited problem.solution
