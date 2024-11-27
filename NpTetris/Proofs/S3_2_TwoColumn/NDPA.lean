@@ -7,6 +7,7 @@ structure NDPA (Stack_α String_α State: Type) where
 initial : Set State
 initial_stack : Stack_α
 accept : Set State
+finite: Fintype State
 step : State → Stack_α → Option String_α → Set (State × List Stack_α)
 
 namespace NDPA
