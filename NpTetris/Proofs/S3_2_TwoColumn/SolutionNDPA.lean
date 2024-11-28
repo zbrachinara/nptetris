@@ -22,11 +22,6 @@ inductive FilledColumn where
 
 inductive State (rows k : ℕ+) where
 /--
-The explicit failure state, which the machine enteers when it cannot spawn the next piece in the
-queue
--/
-| terminal
-/--
 In this state, the machine is in the process of resolving the state of the board after locking a
 piece. Here are the parts of this state:
 - The number of rows currently filled. Once this grows so large that the next piece cannot be
@@ -52,20 +47,11 @@ recorded so that the machine knows whether to transition to the terminal state.
 -/
 | ready (filled : Fin rows)
 
--- inductive State (k rows : ℕ+) where
--- /-- The explicit failure state, which is entered when a piece cannot be spawned -/
--- | terminal
--- | stepping (height : Fin rows)
-
 /-- Explanation of the types given to the NDPA:
 
-- **Stack**: See [WellRow]
+- **Stack**: See [FilledColumn]
 - **String**: The strings that the NDPA accepts are exactly piece queues, no suprises there.
-- **State**: The row at which the cutoff happens between partially filled and completely unfilled
-  rows. Note that this number does not have to reach `rows - 1` to end in a failure state -- it only
-  has to prevent the next piece in the queue from spawning (that is, there is no position at which
-  the piece could be positioned so that it touches the top of the board while not intersecting
-  filled cells).
+- **State**: See [State]
 -/
 def machine (rows k: ℕ+) : NDPA (Option FilledColumn) (LeKShape k) (State rows k) where
 -- start with an empty board
@@ -77,4 +63,10 @@ finite := by
   constructor
   case elems => sorry
   case complete => sorry
-step state := sorry
+step state row shape := match (state, row, shape) with
+| (State.ready k, stack_top, some piece) => by
+  sorry
+| (State.resolving filled residue rlen, _, none) => sorry
+| (_, _, _) => {} -- no available transitions
+
+#print axioms machine
