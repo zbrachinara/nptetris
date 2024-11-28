@@ -45,5 +45,3 @@ where
 shapes_id : lekmino.val.points = kmino.points
 shape_lek : ⟦lekmino⟧ = leks
 shape_k : ⟦kmino⟧ = ks
-
-instance {k} : Fintype (LeKShape k) := sorry

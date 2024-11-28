@@ -1,5 +1,5 @@
 import NpTetris.Proofs.S3_2_TwoColumn.NDPA
-import NpTetris.Mino.LekMino
+import NpTetris.Mino
 
 namespace Solution
 

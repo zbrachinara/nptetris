@@ -1,5 +1,5 @@
 import Mathlib.Data.Set.Defs
-import Mathlib.Data.Fintype.Powerset
+import Mathlib.Data.Fintype.Basic
 
 /-- Non-deterministic Pushdown Automaton. Not (yet) translatable to or from mathlib's NFA. For that
   we need to encode that the stack will always have an element to step with -/
