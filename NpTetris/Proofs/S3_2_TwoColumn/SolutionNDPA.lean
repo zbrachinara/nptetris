@@ -20,6 +20,8 @@ inductive FilledColumn where
 | Left
 | Right
 
+instance : Fintype FilledColumn := sorry
+
 inductive State (rows k : ℕ+) where
 /--
 In this state, the machine is in the process of resolving the state of the board after locking a
@@ -47,6 +49,8 @@ recorded so that the machine knows whether to transition to the terminal state.
 -/
 | ready (filled : Fin rows)
 
+instance {rows k} : Fintype (State rows k) := sorry
+
 /-- Explanation of the types given to the NDPA:
 
 - **Stack**: See [FilledColumn]
@@ -59,10 +63,6 @@ initial := {State.ready 0}
 initial_stack := none
 -- Once the queue is exhausted it doesn't matter whether or not a piece can be spawned
 accept x := ∃ k, x = State.ready k
-finite := by
-  constructor
-  case elems => sorry
-  case complete => sorry
 step state row shape := match (state, row, shape) with
 | (State.ready k, stack_top, some piece) => by
   sorry

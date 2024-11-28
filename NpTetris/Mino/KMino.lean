@@ -152,6 +152,8 @@ def max_height (m : KMino k) : ℤ := by
 /-- Produces the shape of the given mino -/
 def shape (m : KMino k) : KShape k := Quotient.mk _ m
 
+instance {k} : Fintype (KMino k) := by sorry
+
 /-- A relation between two minos that says that one can be maneuvered into the other. -/
 structure ManeuverStep (k₁ k₂ : KMino k) : Prop where
 shapes_id : k₁.shape = k₂.shape

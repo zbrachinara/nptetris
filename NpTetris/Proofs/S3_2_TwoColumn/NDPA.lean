@@ -3,16 +3,19 @@ import Mathlib.Data.Fintype.Powerset
 
 /-- Non-deterministic Pushdown Automaton. Not (yet) translatable to or from mathlib's NFA. For that
   we need to encode that the stack will always have an element to step with -/
-structure NDPA (Stack_α String_α State: Type) where
+structure NDPA
+  (Stack_α String_α State: Type)
+  [Fintype Stack_α] [Fintype String_α] [Fintype State]
+where
 initial : Set State
 initial_stack : Stack_α
 accept : Set State
-finite : Fintype (Stack_α × String_α × State)
 step : State → Stack_α → Option String_α → Finset (State × List Stack_α)
 
 namespace NDPA
 
-variable {Stack_α String_α State} {M : NDPA Stack_α String_α State}
+variable {Stack_α String_α State} [Fintype Stack_α] [Fintype String_α] [Fintype State]
+  {M : NDPA Stack_α String_α State}
 
 inductive accepts' : State → List Stack_α → List String_α → Prop
 where
