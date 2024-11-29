@@ -22,8 +22,9 @@ def zero_anchored {k} : List (KMino k) := by
 
     sorry
 
-instance {k} : Fintype (KShape k) where
-elems := sorry
-complete := sorry
+instance {k} : Finite (KShape k) := by
+  apply Set.finite_univ_iff.mp
+  
+  sorry
 
 instance {k} : Fintype (LeKShape k) := sorry
