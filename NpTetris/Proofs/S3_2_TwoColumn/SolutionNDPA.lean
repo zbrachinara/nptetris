@@ -67,7 +67,6 @@ def List.rec_univ {α} [Fintype α] [DecidableEq α] (k: ℕ) : Finset (List α)
       intro ⟨a,xs⟩
       refine a :: xs
     intro p q
-    dsimp only
     rw [List.cons.injEq]
     rintro ⟨a,b⟩
     ext
@@ -79,7 +78,6 @@ theorem List.rec_univ_finite {α k} [Fintype α] [DecidableEq α]:
 := by
   unfold rec_univ
   unfold Nat.recAux
-  dsimp
   induction k
   · intro x k
     apply Nat.le_of_eq
@@ -87,7 +85,6 @@ theorem List.rec_univ_finite {α k} [Fintype α] [DecidableEq α]:
     apply Finset.eq_of_mem_singleton
     assumption
   case _ n ind =>
-
   intro ls k
   simp only [Nat.rec] at k
   cases Finset.mem_union.mp k
@@ -107,11 +104,9 @@ theorem List.rec_univ_finite' {α k} [Fintype α] [DecidableEq α]:
 := by
   unfold rec_univ
   unfold Nat.recAux
-  dsimp only
   induction k; simp
   case _ n ind =>
   intro ls ls_len
-  dsimp only [Nat.rec]
   apply Finset.mem_union.mpr
   cases Nat.decLt ls.length (n + 1)
   case isFalse h =>
@@ -146,8 +141,7 @@ def Fin.all {n} : Finset (Fin n) := by
       case toFun => exact Fin.castSucc
       intro p q pq
       exact Fin.castSucc_inj.mp pq
-    · dsimp only
-      intro neg
+    · intro neg
       have ⟨a, ⟨contra1, contra2⟩⟩ := Finset.mem_map.mp neg
       simp at contra2
       apply Fin.exists_castSucc_eq.mp
@@ -161,8 +155,6 @@ complete := by
   unfold Nat.recAux
   induction n; simp
   case _ a ind =>
-  dsimp at ind
-  dsimp
   intro x
   apply Finset.mem_cons.mpr
   cases (Nat.decLt x.val a)
@@ -194,7 +186,6 @@ elems := by
       intro ⟨f, ⟨g, g_residue⟩⟩
       exact State.resolving f g (List.rec_univ_finite g g_residue)
     intro p q
-    dsimp
     intro pq
     injection pq with _ k
     ext
@@ -217,7 +208,7 @@ complete x := by
     constructor
     · apply Finset.mem_product.mpr
       simp only [Finset.mem_univ, Finset.mem_attach, and_self]
-    · dsimp only
+    · rfl
   case ready filled =>
     right
     exists filled

@@ -1,12 +1,39 @@
 import Mathlib.Data.Multiset.Fintype
 
+import NpTetris.Mino.Quarantine
 import NpTetris.Transform
 import NpTetris.MulActionQuotient
 
-def one_off' : Set (ℤ × ℤ) := {(p, q) : (ℤ × ℤ) | p^2 + q^2 = 1 }
-def one_off : Set Position := { Multiplicative.ofAdd x | x ∈ one_off'}
+def norm_one_offsets : Finset Position := by
+  apply Finset.map
+  case α => exact (ℤ × ℤ)
+  case s => exact {(0, 1), (1, 0), (0, -1), (-1, 0)}
+  apply Equiv.toEmbedding
+  exact Multiplicative.ofAdd
+lemma norm_one.prop {x y : ℤ}: (x, y) ∈ norm_one_offsets ↔ x^2 + y^2 = 1 := by
+  constructor
+  · unfold norm_one_offsets
+    simp
+    rintro (h | h | h | h) <;> cases h <;> rfl
+  · intro xy_norm
+    have := int_square xy_norm
+    apply Finset.mem_map.mpr
+    exists (x, y)
+    constructor <;> try rfl
+    casesm* _ ∨ _
+    case _ x_zro =>
+      have : x^2 = 0 := by subst x; simp
+      have : y^2 = 1 := by rw [this, zero_add] at xy_norm; exact xy_norm
+      cases int_square_one.mp this
+      repeat (subst x; subst y; simp)
+    all_goals {
+      have : x ^ 2 = 1 := by subst x; ring
+      have : y ^ 2 = 0 := by rw [this] at xy_norm; exact (Int.add_left_inj 1).mp xy_norm
+      have : y = 0 := int_square_zro.mp this
+      subst x; subst y; simp
+    }
 
-private theorem norm_is_id_lemma (r : Rotation):
+private lemma norm_is_id (r : Rotation):
   (four_rot ^ (Multiplicative.toAdd r).val).im ^ 2 +
   (four_rot ^ (Multiplicative.toAdd r).val).re ^ 2 = 1
 := by
@@ -16,28 +43,29 @@ private theorem norm_is_id_lemma (r : Rotation):
   repeat rw [<- pow_two] at this
   rw [id, add_comm] at this
   exact this
-/-- Rotation keeps one-off transformations -/
-theorem rotation_preserves_one_off (p : Position) (r : Rotation) :
-  p ∈ one_off → rotation_hom r p ∈ one_off
+/-- Rotation preserves one-off transformations -/
+theorem rotation_preserves_norm_one (p : Position) (r : Rotation) :
+  p ∈ norm_one_offsets → rotation_hom r p ∈ norm_one_offsets
 := by
-  simp [one_off, one_off']
-  intro x y cond pxy
-  rw [<- pxy]
+  have ⟨x, y⟩ := p
+  intro cond
   simp [rotation_hom, aut_rot, aut_rot_additive, aut_rot_gaussian, iso_gaussian_position]
+  apply norm_one.prop.mpr
   ring_nf
-  conv =>
+  conv => -- TODO ugly proof, redo with calc
     lhs; rw [add_assoc, add_assoc];
     rhs; rw [<- add_assoc, add_comm, <- add_assoc, add_comm];
     lhs; rw [mul_comm]
   rw [<- add_assoc]
   repeat rw [<- add_mul]
-  rw [add_comm (_ ^ _), norm_is_id_lemma, one_mul, one_mul]
+  rw [add_comm (_ ^ _), norm_is_id, one_mul, one_mul]
+  apply norm_one.prop.mp
   assumption
 
 inductive Connected : Finset Position → Prop where
 | triv p : Connected {p}
 | cons point point' (set' : Finset Position) :
-    point' ∈ set' → point⁻¹ * point' ∈ one_off → Connected (insert point set')
+    point' ∈ set' → point⁻¹ * point' ∈ norm_one_offsets → Connected (insert point set')
 
 @[simp]
 def transform_map (t : Transform) : Position ↪ Position where
@@ -52,6 +80,7 @@ structure KMino (k : ℕ+) where
   points: Finset Position
   connected: Connected points
   boundable : points.card = k
+deriving DecidableEq
 
 /-- Transforming a set of points preserves connectedness -/
 instance (bound) : SMul Transform (KMino bound) where
@@ -75,7 +104,7 @@ smul := by
         conv => rhs; rw [mul_assoc]; rhs ; rw [mul_comm, mul_assoc]
         rw [mul_inv_cancel, mul_one]
         rw [neg_rotation, <- rotation_distrib]
-        apply rotation_preserves_one_off
+        apply rotation_preserves_norm_one
         assumption
 
 @[simp]

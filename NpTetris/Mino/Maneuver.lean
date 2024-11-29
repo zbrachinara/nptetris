@@ -7,7 +7,7 @@ variable {k}
 /-- A relation between two minos that says that one can be maneuvered into the other. -/
 structure ManeuverStep (k₁ k₂ : KMino k) : Prop where
 shapes_id : k₁.shape = k₂.shape
-touching : ∃ p₁ ∈ k₁.points, ∃ p₂ ∈ k₂.points, p₁ = p₂ ∨ p₁⁻¹ * p₂ ∈ one_off
+touching : ∃ p₁ ∈ k₁.points, ∃ p₂ ∈ k₂.points, p₁ = p₂ ∨ p₁⁻¹ * p₂ ∈ norm_one_offsets
 
 abbrev Path := List (KMino k)
 
