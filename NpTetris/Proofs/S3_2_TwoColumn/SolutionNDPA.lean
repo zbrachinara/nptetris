@@ -2,6 +2,7 @@ import Mathlib.Data.Fin.Fin2
 
 import NpTetris.Proofs.S3_2_TwoColumn.NDPA
 import NpTetris.Mino
+import NpTetris.Board
 
 namespace Solution
 
@@ -226,7 +227,21 @@ initial_stack := none
 -- Once the queue is exhausted it doesn't matter whether or not a piece can be spawned
 accept x := ∃ k, x = State.ready k
 step state row shape := match (state, row, shape) with
-| (State.ready k, stack_top, some piece) => by
+| (State.ready fill, stack_top, some shape) => by
+  constructor
+  case val =>
+    apply Set.image
+    case s =>
+      have board : Board 2 k := {}
+      exact {x ∈ shape.minos | board.at_top x.val}
+    intro mino
+    refine (?x, [stack_top])
+    apply State.resolving
+    case filled => exact fill + mino.val.height
+    case residue => sorry
+    case rlen => sorry
   sorry
 | (State.resolving filled residue rlen, _, none) => sorry
-| (_, _, _) => {} -- no available transitions
+| (_, _, _) => ⟨{}, Set.finite_empty⟩ -- no available transitions
+
+#print axioms machine

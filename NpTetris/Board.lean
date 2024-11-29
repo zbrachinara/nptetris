@@ -2,7 +2,7 @@ import NpTetris.Mino
 
 /-- A rectangular playing field with width `n` (`n` columns) and height `m` (`m` rows). Coordinates
   increase from left to right and from bottom to top. -/
-abbrev Board (n m : ℕ) := Finset (Fin n × Fin m)
+abbrev Board (n m : ℕ+) := Finset (Fin n × Fin m)
 
 namespace Board
 

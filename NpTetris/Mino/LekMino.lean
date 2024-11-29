@@ -6,10 +6,12 @@ structure LeKMino (k : ℕ+) where
   t : Fin k
   val : KMino ⟨t + 1, by apply Nat.zero_lt_succ⟩
 
-instance (bound) : SMul Transform (LeKMino bound) where
+instance LeKMino.instSMul (bound) : SMul Transform (LeKMino bound) where
 smul a b := by
   constructor
-  case val => exact a • b.val
+  exact a • b.val
+
+#print axioms LeKMino.instSMul
 
 @[simp]
 theorem lower_lekmino_val {b} (t : Transform) (p : LeKMino b) :
@@ -27,6 +29,10 @@ mul_smul a b x := by
   rw [mul_smul]
 
 def LeKShape (bound) := orbit_quotient Transform (LeKMino bound)
+#print axioms LeKShape
+#print axioms LeKMino
+#print axioms Transform
+#print axioms orbit_quotient
 
 def LeKMino.shape {k} (mino : LeKMino k) : LeKShape k := Quotient.mk _ mino
 
@@ -37,6 +43,9 @@ def LeKShape.t {b} (shape : LeKShape b) : Fin b := by
   cases pq with | intro t eq =>
   rw [<- eq]
   rfl
+
+def LeKShape.minos {k} (shape : LeKShape k) : Set (LeKMino k) := {s | ⟦s⟧ = shape}
+
 
 /-- There exist two minos which are absolutely identical, relating the shapes in each type -/
 structure LeKShape.shape_eq {k k'} {lekmino : LeKMino k'} {kmino : KMino k}

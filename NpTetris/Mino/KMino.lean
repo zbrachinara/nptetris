@@ -1,5 +1,3 @@
-import Mathlib.Data.Multiset.Fintype
-
 import NpTetris.Mino.Quarantine
 import NpTetris.Transform
 import NpTetris.MulActionQuotient
@@ -137,11 +135,14 @@ mul_smul a b p := by
   fact -- if two minos have the same shape, they are equal in `Shape`. -/
 def KShape (bound) := orbit_quotient Transform (KMino bound)
 
+def Position.y' (t: Position) : WithBot ℤ := some t.2
+def Position.y'' (t : Position) : WithTop ℤ := some t.2
+
 namespace KMino
 
-variable {k}
+variable {k} (m : KMino k)
 
-theorem nonempty (m : KMino k) : Nonempty m.points := by
+theorem nonempty : Nonempty m.points := by
   have ⟨points, connected, card⟩ := m
   dsimp only
   cases connected
@@ -150,10 +151,8 @@ theorem nonempty (m : KMino k) : Nonempty m.points := by
     exists pt
     simp only [Finset.mem_insert, true_or]
 
-def Position.y' (t: Position) : WithBot ℤ := some t.2
-
 /-- The maximum y-coordinate of the positions of a mino. -/
-def max_height (m : KMino k) : ℤ := by
+def max_height : ℤ := by
   apply WithBot.unbot
   case x =>
     apply Multiset.sup
@@ -178,7 +177,67 @@ def max_height (m : KMino k) : ℤ := by
     assumption
   exact pos neg
 
+def min_height : ℤ := by
+  apply WithTop.untop
+  case x =>
+    apply Multiset.inf
+    apply Multiset.map
+    case s => exact m.points.val
+    exact Position.y''
+  intro has_top
+  have pos : ¬∃ x, Position.y'' x = ⊤ := by
+    push_neg
+    intro position pnone
+    unfold Position.y'' at pnone
+    cases pnone
+  have neg : ∃ x, Position.y'' x = ⊤ := by
+    have ⟨p, _⟩ := m.nonempty
+    exists p
+    apply top_unique
+    rw [<- has_top]
+    apply Multiset.inf_le
+    apply Multiset.mem_map_of_mem
+    apply Finset.mem_def.mp
+    assumption
+  exact pos neg
+
+instance explicit_withtop_int_preorder : Preorder (WithTop ℤ) where
+le_refl := by exact fun a ↦ Preorder.le_refl a
+le_trans := by exact fun a b c a_1 a_2 ↦ Preorder.le_trans a b c a_1 a_2
+lt_iff_le_not_le := by exact fun a b ↦ lt_iff_le_not_le
+
+lemma height_min_le_max : m.min_height ≤ m.max_height := by
+  unfold min_height
+  unfold max_height
+  unfold WithTop.untop
+  unfold WithBot.unbot
+  split ; case _ x' _ x _ x_inf _ =>
+  split ; case _ y' _ y _ y_sup _ =>
+  by_cases h : x ≤ y ; assumption
+  push_neg at h
+  exfalso
+--@LT.lt (WithTop ℤ) Preorder.toLT
+  -- have : (some y)  < (some x) := by exact h
+  -- let x'' : WithTop ℤ := (Multiset.map Position.y' m.points.val).inf
+  -- let y'' : WithTop ℤ := some y
+  -- have def_x'' : x'' = (Multiset.map Position.y' m.points.val).inf := by exact rfl
+  -- have def_y'' : y'' = some y := by exact rfl
+  -- rw [<- def_y''] at this
+  -- rw [<- x_inf, <- def_x''] at this
+  -- have : y'' ≤ (Multiset.map Position.y'' m.points.val).inf := by
+  --   apply le_of_lt
+  --   exact this
+  sorry
+
+def height := m.max_height - m.min_height -- TODO make into nat
+
 /-- Produces the shape of the given mino -/
 def shape (m : KMino k) : KShape k := Quotient.mk _ m
 
 end KMino
+
+namespace KShape
+
+def minos {k} (shape : KShape k) : Set (KMino k) := {s | ⟦s⟧ = shape}
+
+end KShape
