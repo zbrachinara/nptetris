@@ -29,10 +29,6 @@ mul_smul a b x := by
   rw [mul_smul]
 
 def LeKShape (bound) := orbit_quotient Transform (LeKMino bound)
-#print axioms LeKShape
-#print axioms LeKMino
-#print axioms Transform
-#print axioms orbit_quotient
 
 def LeKMino.shape {k} (mino : LeKMino k) : LeKShape k := Quotient.mk _ mino
 

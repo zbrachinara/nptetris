@@ -31,34 +31,43 @@ lemma norm_one.prop {x y : ℤ}: (x, y) ∈ norm_one_offsets ↔ x^2 + y^2 = 1 :
       subst x; subst y; simp
     }
 
-private lemma norm_is_id (r : Rotation):
-  (four_rot ^ (Multiplicative.toAdd r).val).im ^ 2 +
-  (four_rot ^ (Multiplicative.toAdd r).val).re ^ 2 = 1
-:= by
-  have := norm_four_rot r
-  have id : r.val = (Multiplicative.toAdd r).val := by exact rfl
-  rw [Zsqrtd.norm_def, neg_one_mul, Int.neg_mul, Int.sub_neg] at this
-  repeat rw [<- pow_two] at this
-  rw [id, add_comm] at this
-  exact this
+
+private lemma gaussian_int_aux {x : GaussianInt} : x.re ^2 - -x.im^2 = x.re^2 - -1 * x.im^2 := by
+  refine (Int.sub_left_inj (x.re ^ 2)).mpr ?a
+  exact Int.neg_eq_neg_one_mul (x.im ^ 2)
+
 /-- Rotation preserves one-off transformations -/
 theorem rotation_preserves_norm_one (p : Position) (r : Rotation) :
   p ∈ norm_one_offsets → rotation_hom r p ∈ norm_one_offsets
 := by
   have ⟨x, y⟩ := p
   intro cond
-  simp [rotation_hom, aut_rot, aut_rot_additive, aut_rot_gaussian, iso_gaussian_position]
+  simp only [rotation_hom]
+  dsimp
+  simp only [aut_rot, aut_rot_additive, aut_rot_gaussian, iso_gaussian_position]
+  dsimp
   apply norm_one.prop.mpr
+  generalize r'_def : (four_rot ^ (Multiplicative.toAdd r).val) = r'
+  generalize p'_def : (Multiplicative.toAdd (x, y)) = p'
+  repeat rw [add_sq]
   ring_nf
   conv => -- TODO ugly proof, redo with calc
     lhs; rw [add_assoc, add_assoc];
     rhs; rw [<- add_assoc, add_comm, <- add_assoc, add_comm];
-    lhs; rw [mul_comm]
+    lhs; rw [Int.mul_comm]
   rw [<- add_assoc]
   repeat rw [<- add_mul]
-  rw [add_comm (_ ^ _), norm_is_id, one_mul, one_mul]
+  rw [ Int.add_comm (r'.im ^ _), <- Int.sub_neg _ (_ ^ _), gaussian_int_aux]
+  repeat rw [pow_two]
+  rw [<- Int.mul_assoc (-1), <-Zsqrtd.norm_def]
+  have this' := norm_four_rot r
+  have : (Multiplicative.toAdd r).val = r.val := by exact rfl
+  rw [<-this] at this'
+  rw [<-r'_def, this']
+  ring_nf
   apply norm_one.prop.mp
-  assumption
+  rw [<- p'_def]
+  simpa
 
 inductive Connected : Finset Position → Prop where
 | triv p : Connected {p}
@@ -81,10 +90,10 @@ structure KMino (k : ℕ+) where
 deriving DecidableEq
 
 /-- Transforming a set of points preserves connectedness -/
-instance (bound) : SMul Transform (KMino bound) where
+instance Mino.instSMul (bound) : SMul Transform (KMino bound) where
 smul := by
   rintro t ⟨points, conn, sized⟩
-  apply KMino.mk
+  constructor
   case mk.points => exact points.map (transform_map t)
   case mk.boundable => rw [Finset.card_map]; assumption -- trivial
   case mk.connected =>
@@ -143,7 +152,7 @@ namespace KMino
 variable {k} (m : KMino k)
 
 theorem nonempty : Nonempty m.points := by
-  have ⟨points, connected, card⟩ := m
+  have ⟨points, connected, sized⟩ := m
   dsimp only
   cases connected
   case triv p => exists p; rw [Finset.mem_singleton]
@@ -232,12 +241,8 @@ lemma height_min_le_max : m.min_height ≤ m.max_height := by
 def height := m.max_height - m.min_height -- TODO make into nat
 
 /-- Produces the shape of the given mino -/
-def shape (m : KMino k) : KShape k := Quotient.mk _ m
+def shape : KShape k := ⟦m⟧
 
 end KMino
 
-namespace KShape
-
-def minos {k} (shape : KShape k) : Set (KMino k) := {s | ⟦s⟧ = shape}
-
-end KShape
+def Shape.minos {k} (shape : KShape k) : Set (KMino k) := {s | ⟦s⟧ = shape}
