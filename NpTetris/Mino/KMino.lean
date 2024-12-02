@@ -71,8 +71,16 @@ theorem rotation_preserves_norm_one (p : Position) (r : Rotation) :
 
 inductive Connected : Finset Position → Prop where
 | triv p : Connected {p}
-| cons point point' (set' : Finset Position) :
+| cons point point' (set' : Finset Position) : Connected set' →
     point' ∈ set' → point⁻¹ * point' ∈ norm_one_offsets → Connected (insert point set')
+
+theorem Connected.nonempty s (conn : Connected s) : 0 < s.card := by
+  induction conn with
+  | triv _ => exact Nat.zero_lt_succ [].length
+  | cons x _ set _ _ _ ih => calc
+    _ < _ := ih
+    _ ≤ _ := by apply Finset.card_le_card; apply Finset.subset_insert
+#print axioms Connected.nonempty
 
 @[simp]
 def transform_map (t : Transform) : Position ↪ Position where
@@ -97,12 +105,38 @@ smul := by
   case mk.points => exact points.map (transform_map t)
   case mk.boundable => rw [Finset.card_map]; assumption -- trivial
   case mk.connected =>
-    induction conn
+    induction conn generalizing bound
     case triv p =>
       apply Connected.triv
-    case cons pt witness points wit_set wit_cond =>
+    case cons pt witness points conn wit_set wit_cond ind =>
       rw [Finset.map_insert]
       apply Connected.cons _ (transform_map t witness)
+      · by_cases pt_mem : pt ∈ points
+        · apply ind bound
+          rw [<- sized, Finset.card_insert_of_mem]
+          assumption
+        · apply ind (bound - 1)
+          apply Nat.add_right_cancel
+          -- have : PNat.val (bound - 1) + 1 = PNat.val (bound - 1 + 1) := rfl
+          have : PNat.val (bound - 1) = bound.val - 1 := by
+            conv => lhs ; unfold HSub.hSub ; unfold instHSub
+            unfold Sub.sub
+            unfold PNat.instSub
+            dsimp
+            unfold Nat.toPNat'
+            have : (bound.val - 1).pred = bound.val - 1 - 1 := by exact rfl
+            rw [this]
+            dsimp
+            apply Nat.sub_add_cancel
+            rw [Finset.card_insert_of_not_mem] at sized
+            have : 0 < points.card := by exact Connected.nonempty points conn
+            have : 1 < points.card + 1 := Nat.lt_add_of_pos_left this
+            have : 1 < bound.val := by exact Nat.lt_of_lt_of_eq this sized
+            exact Nat.le_sub_one_of_lt this
+            assumption
+          rw [<- Finset.card_insert_of_not_mem, sized, this]
+          exact Eq.symm (PNat.natPred_add_one bound)
+          repeat assumption
       · exact (Finset.mem_map' (transform_map t)).mpr wit_set
       · have ⟨t_left, t_right⟩ := t
         simp
@@ -168,7 +202,7 @@ theorem nonempty : Nonempty m.points := by
   dsimp only
   cases connected
   case triv p => exists p; rw [Finset.mem_singleton]
-  case cons pt _ _ _ _ =>
+  case cons pt _ _ _ _ _ =>
     exists pt
     simp only [Finset.mem_insert, true_or]
 
@@ -180,7 +214,7 @@ theorem nonempty' : Nonempty m.points.attach := by
     exists ⟨p, ?a1⟩
     exact Finset.mem_singleton.mpr rfl
     exact Finset.mem_attach {p} ⟨p, Finset.mem_singleton.mpr rfl⟩
-  case cons pt _ _ _ _ =>
+  case cons pt _ _ _ _ _ =>
     exists ⟨pt, ?a2⟩
     apply Finset.mem_insert_self pt
     apply Finset.mem_attach
