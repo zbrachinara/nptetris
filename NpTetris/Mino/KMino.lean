@@ -81,6 +81,27 @@ theorem Connected.nonempty s (conn : Connected s) : 0 < s.card := by
     _ < _ := ih
     _ ≤ _ := by apply Finset.card_le_card; apply Finset.subset_insert
 
+/-- Although not defined this way, `Connected` can be functionally treated as if each construction
+  introduces a brand new point, rather than a potentially existing one. -/
+def Connected.induction_nonoverlapping
+  (motive : (a : Finset Position) → Connected a → Prop)
+  (triv : ∀ p, motive {p} (Connected.triv p))
+  (cons : ∀ p p' set' conn,
+    (p'_set : p' ∈ set') →
+    (one_off : p⁻¹ * p' ∈ norm_one_offsets) →
+    motive set' conn →
+    p ∉ set' → -- the special sauce
+    motive (insert p set') (by apply Connected.cons; repeat assumption)) :
+  ∀ {s} conn, motive s conn := by intros s conn; induction conn with
+| triv => apply triv
+| cons point _ set conn' _ _ ih =>
+  by_cases pmem : point ∈ set
+  · have : insert point set = set := by exact Finset.insert_eq_of_mem pmem
+    simp_rw [this]
+    assumption
+  · apply cons
+    repeat assumption
+
 @[simp]
 def transform_map (t : Transform) : Position ↪ Position where
 toFun := (t • ·)
@@ -104,26 +125,21 @@ smul := by
   case mk.points => exact points.map (transform_map t)
   case mk.boundable => rw [Finset.card_map]; assumption -- trivial
   case mk.connected =>
-    induction conn generalizing bound
-    case triv p =>
-      apply Connected.triv
-    case cons pt witness points conn wit_set wit_cond ind =>
+    induction conn using Connected.induction_nonoverlapping generalizing bound
+    case triv p => apply Connected.triv
+    case cons pt witness points conn wit_set wit_cond ind pt_mem =>
       rw [Finset.map_insert]
       apply Connected.cons _ (transform_map t witness)
-      · by_cases pt_mem : pt ∈ points
-        · apply ind bound
-          rw [<- sized, Finset.card_insert_of_mem]
-          assumption
-        · let bound' : ℕ+ := by
-            refine ⟨bound.val - 1, ?g⟩
-            rw [<- sized, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
-            exact Connected.nonempty points conn
-            assumption
-          apply ind bound'
-          unfold bound'
-          change _ = bound.val - 1
+      · let bound' : ℕ+ := by
+          refine ⟨bound.val - 1, ?g⟩
           rw [<- sized, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
+          exact Connected.nonempty points conn
           assumption
+        apply ind bound'
+        unfold bound'
+        change _ = bound.val - 1
+        rw [<- sized, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
+        assumption
       · exact (Finset.mem_map' (transform_map t)).mpr wit_set
       · have ⟨t_left, t_right⟩ := t
         simp
@@ -133,7 +149,7 @@ smul := by
         rw [mul_inv_cancel, mul_one]
         rw [neg_rotation, <- rotation_distrib]
         apply rotation_preserves_norm_one
-        assumption
+        exact wit_cond
 
 @[simp]
 theorem Transform.smul_points_def {b} (t : Transform) (p : KMino b) :
@@ -236,27 +252,20 @@ lemma min_height_mem : m.min_height ∈ m.ys := by
   dsimp only
   split ; case _ _ _ x _ inf he =>
   apply Multiset.mem_map.mpr
-  induction connected generalizing k with
+  induction connected using Connected.induction_nonoverlapping generalizing k with
   | triv p =>
     simp only [Finset.singleton_val, Multiset.mem_singleton, exists_eq_left]
     simp only [Finset.singleton_val, Multiset.map_singleton, Multiset.inf_singleton] at inf
     unfold WithTop.some at inf
     exact Option.some_inj.mp inf
-  | cons p _ set conn' _ _ ind =>
-    by_cases h : p ∈ set
-    · rw [Finset.insert_eq_of_mem h] at *
-      apply ind
-      assumption
-      assumption
-      apply proof_irrel_heq
-      assumption
+  | cons p _ set conn' _ _ ind h =>
     let k' : ℕ+ := by
       refine ⟨k.val - 1, ?g⟩
       rw [<- card, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
       apply Connected.nonempty
       repeat assumption
     have : set.card = k' := by
-      -- TODO basically same proof as before, generalize induction principle
+      -- TODO basically same proof as in SMul, generalize induction principle to avoid repetition
       unfold k'
       change _ = k.val - 1
       rw [<- card, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
@@ -326,6 +335,27 @@ lemma height_min_le_max : m.min_height ≤ m.max_height := by
   exact Lean.Omega.Int.le_lt_asymm this h
 
 def height := m.max_height - m.min_height |> Int.toNat
+
+@[simp]
+lemma height_pos : m.height = m.max_height - m.min_height := by
+  unfold height
+  simp only [sub_add_cancel, Int.ofNat_toNat]
+  apply Int.max_eq_left
+  exact Int.sub_nonneg_of_le m.height_min_le_max
+
+theorem height_le_k : m.height ≤ k := by
+  have ⟨points, conn, card⟩ := m
+  unfold height
+  unfold max_height
+  unfold min_height
+  unfold WithBot.unbot
+  unfold WithTop.untop
+  split
+  split
+  induction conn generalizing k with
+  | triv => sorry
+  | cons => sorry
+#print axioms height_le_k
 
 /-- Produces the shape of the given mino -/
 def shape : KShape k := ⟦m⟧
