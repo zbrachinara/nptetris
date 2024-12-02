@@ -80,7 +80,6 @@ theorem Connected.nonempty s (conn : Connected s) : 0 < s.card := by
   | cons x _ set _ _ _ ih => calc
     _ < _ := ih
     _ ≤ _ := by apply Finset.card_le_card; apply Finset.subset_insert
-#print axioms Connected.nonempty
 
 @[simp]
 def transform_map (t : Transform) : Position ↪ Position where
@@ -115,28 +114,16 @@ smul := by
         · apply ind bound
           rw [<- sized, Finset.card_insert_of_mem]
           assumption
-        · apply ind (bound - 1)
-          apply Nat.add_right_cancel
-          -- have : PNat.val (bound - 1) + 1 = PNat.val (bound - 1 + 1) := rfl
-          have : PNat.val (bound - 1) = bound.val - 1 := by
-            conv => lhs ; unfold HSub.hSub ; unfold instHSub
-            unfold Sub.sub
-            unfold PNat.instSub
-            dsimp
-            unfold Nat.toPNat'
-            have : (bound.val - 1).pred = bound.val - 1 - 1 := by exact rfl
-            rw [this]
-            dsimp
-            apply Nat.sub_add_cancel
-            rw [Finset.card_insert_of_not_mem] at sized
-            have : 0 < points.card := by exact Connected.nonempty points conn
-            have : 1 < points.card + 1 := Nat.lt_add_of_pos_left this
-            have : 1 < bound.val := by exact Nat.lt_of_lt_of_eq this sized
-            exact Nat.le_sub_one_of_lt this
+        · let bound' : ℕ+ := by
+            refine ⟨bound.val - 1, ?g⟩
+            rw [<- sized, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
+            exact Connected.nonempty points conn
             assumption
-          rw [<- Finset.card_insert_of_not_mem, sized, this]
-          exact Eq.symm (PNat.natPred_add_one bound)
-          repeat assumption
+          apply ind bound'
+          unfold bound'
+          change _ = bound.val - 1
+          rw [<- sized, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
+          assumption
       · exact (Finset.mem_map' (transform_map t)).mpr wit_set
       · have ⟨t_left, t_right⟩ := t
         simp
@@ -178,20 +165,9 @@ mul_smul a b p := by
   fact -- if two minos have the same shape, they are equal in `Shape`. -/
 def KShape (bound) := orbit_quotient Transform (KMino bound)
 
-def botmap {α} (l : Multiset α) : Multiset (WithBot α) := l.map (WithBot.some ·)
-def topmap {α} (l : Multiset α) : Multiset (WithTop α) := l.map (WithBot.some ·)
-
-
-theorem eq_bot_top (a : Multiset ℤ) : botmap a = topmap a := rfl
-
-def Position.y (t: Position) : ℤ := t.2
--- def Position.y'' (t : Position) : ℤ := t.2
-def ymap (l : Multiset Position) : Multiset ℤ := l.map Position.y
-
-def yfiber'{s : Multiset Position} : {x // x ∈ s} → {x // x ∈ ymap s} :=
-λ ⟨a, b⟩ ↦ ⟨a.y, by unfold ymap; apply Multiset.mem_map_of_mem; exact b⟩
-def ymap' (s : Multiset Position) (t : Multiset {x // x ∈ s}) : Multiset {x // x ∈ ymap s}
-:= t.map (yfiber')
+def Position.y (t : Position) : ℤ := t.2
+-- def Position.y' (t: Position) : WithBot ℤ := some t.2
+-- def Position.y'' (t : Position) : WithTop ℤ := some t.2
 
 namespace KMino
 
@@ -206,112 +182,148 @@ theorem nonempty : Nonempty m.points := by
     exists pt
     simp only [Finset.mem_insert, true_or]
 
-theorem nonempty' : Nonempty m.points.attach := by
-  have ⟨points, connected, sized⟩ := m
-  dsimp only
-  cases connected
-  case triv p =>
-    exists ⟨p, ?a1⟩
-    exact Finset.mem_singleton.mpr rfl
-    exact Finset.mem_attach {p} ⟨p, Finset.mem_singleton.mpr rfl⟩
-  case cons pt _ _ _ _ _ =>
-    exists ⟨pt, ?a2⟩
-    apply Finset.mem_insert_self pt
-    apply Finset.mem_attach
-
--- TODO cleanup/generalize, should be applicable to all maps to DecidableEq types
+def ys : Multiset ℤ := m.points.val.map Position.y
 
 /-- The maximum y-coordinate of the positions of a mino. -/
-def max_height' : {x : ℤ // x ∈ ymap m.points.val} := by
+def max_height : ℤ := by
   apply WithBot.unbot
   case x =>
     apply Multiset.sup
-    apply botmap
-    apply ymap'
-    exact m.points.val.attach
+    exact m.ys.map (WithBot.some ·)
   -- Proof that max_height is not unvalued
-  dsimp
   intro has_bottom
-  have pos : ¬∃ x, (@yfiber' m.points.val x |> WithBot.some) = ⊥ := by
+  have pos : ¬∃ x, WithBot.some (Position.y x) = ⊥ := by
     push_neg
     intro position pnone
-    unfold yfiber' at pnone
+    unfold Position.y at pnone
     cases pnone
-  have neg : ∃ x, (@yfiber' m.points.val x |> WithBot.some) = ⊥ := by
-    have ⟨p, _⟩ := m.nonempty'
+  have neg : ∃ x, WithBot.some (Position.y x) = ⊥ := by
+    have ⟨p, _⟩ := m.nonempty
     exists p
     apply bot_unique
     rw [<- has_bottom]
     apply Multiset.le_sup
-    apply Multiset.mem_map_of_mem
-    apply Multiset.mem_map_of_mem
+    repeat apply Multiset.mem_map_of_mem
     assumption
   exact pos neg
 
-def min_height' : {x : ℤ // x ∈ ymap m.points.val} := by
+def min_height : ℤ := by
   apply WithTop.untop
   case x =>
     apply Multiset.inf
-    apply topmap
-    apply ymap'
-    exact m.points.val.attach
+    exact m.ys.map (WithTop.some · )
   intro has_top
-  have pos : ¬∃ x, (@yfiber' m.points.val x |> WithTop.some) = ⊤ := by
+  have pos : ¬∃ x, WithTop.some (Position.y x) = ⊤ := by
     push_neg
     intro position pnone
-    unfold yfiber' at pnone
+    unfold Position.y at pnone
     cases pnone
-  have neg : ∃ x, (@yfiber' m.points.val x |> WithTop.some) = ⊤ := by
-    have ⟨p, _⟩ := m.nonempty'
+  have neg : ∃ x, WithTop.some (Position.y x) = ⊤ := by
+    have ⟨p, _⟩ := m.nonempty
     exists p
     apply top_unique
     rw [<- has_top]
     apply Multiset.inf_le
-    apply Multiset.mem_map_of_mem
-    apply Multiset.mem_map_of_mem
+    repeat apply Multiset.mem_map_of_mem
     assumption
   exact pos neg
 
-def max_height := m.max_height'.val
-def min_height := m.min_height'.val
+lemma min_height_mem : m.min_height ∈ m.ys := by
+  have ⟨points, connected, card⟩ := m
+  unfold min_height
+  unfold WithTop.untop
+  unfold ys
+  dsimp only
+  split ; case _ _ _ x _ inf he =>
+  apply Multiset.mem_map.mpr
+  induction connected generalizing k with
+  | triv p =>
+    simp only [Finset.singleton_val, Multiset.mem_singleton, exists_eq_left]
+    simp only [Finset.singleton_val, Multiset.map_singleton, Multiset.inf_singleton] at inf
+    unfold WithTop.some at inf
+    exact Option.some_inj.mp inf
+  | cons p _ set conn' _ _ ind =>
+    by_cases h : p ∈ set
+    · rw [Finset.insert_eq_of_mem h] at *
+      apply ind
+      assumption
+      assumption
+      apply proof_irrel_heq
+      assumption
+    let k' : ℕ+ := by
+      refine ⟨k.val - 1, ?g⟩
+      rw [<- card, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
+      apply Connected.nonempty
+      repeat assumption
+    have : set.card = k' := by
+      -- TODO basically same proof as before, generalize induction principle
+      unfold k'
+      change _ = k.val - 1
+      rw [<- card, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
+      assumption
+    rw [Finset.insert_val, Multiset.ndinsert_of_not_mem, Multiset.map_cons, Multiset.map_cons,
+    Multiset.inf_cons] at inf
+    by_cases h' : WithTop.some p.y ≤ some x
+    · have := calc
+        _ ≤ _ := h'
+        _ = _ := symm inf
+        _ ≤ _ := by apply inf_le_right
+      have := inf_eq_left.mpr this
+      rw [inf] at this
+      exists p
+      constructor
+      apply Finset.mem_def.mp
+      exact Finset.mem_insert_self p set
+      apply WithTop.coe_inj.mp
+      rw [<- this]
+      rfl
+    have h' := lt_of_not_le h'
+    suffices h : ∃ a ∈ set.val, a.y = x by
+      have ⟨a, a_mem, ayx⟩ := h
+      exists a
+      constructor
+      apply Finset.mem_val.mpr
+      exact Finset.mem_insert_of_mem a_mem
+      assumption
+    apply ind ⟨set, conn', this⟩
+    have := calc
+      _ = _ := inf
+      _ < _ := h'
+    have := inf_lt_left.mp this
+    have := lt_of_not_le this |> le_of_lt
+    have := inf_eq_right.mpr this
+    rw [inf] at this
+    rw [<- this]
+    apply proof_irrel_heq
+    repeat assumption
 
-lemma height_min_le_max : m.min_height' ≤ m.max_height' := by
-  simp only [min_height', max_height', WithTop.untop, WithBot.unbot]
-  split ; case _ _ _ x _ _ _ =>
-  split ; case _ _ _ y _ y_sup _ =>
-  by_cases h : x ≤ y ; assumption
-  exfalso
-  push_neg at h
-  let ⟨yv, yp⟩ := y
-  let ⟨xv, xp⟩ := x
-  have : ⟨xv, xp⟩ ∈ ymap' m.points.val m.points.val.attach := by
-    unfold ymap'
-    unfold yfiber'
-    apply Multiset.mem_map.mpr
-    let ⟨a, b, c⟩:= Multiset.mem_map.mp xp
-    exists ⟨a, b⟩
-    constructor
-    exact Multiset.mem_attach m.points.val ⟨a, b⟩
-    rw [Subtype.mk.injEq]
-    assumption
-  have : (WithBot.some ⟨xv, xp⟩: WithTop _) ∈ botmap (ymap' m.points.val m.points.val.attach) := by
-    unfold botmap
-    apply Multiset.mem_map_of_mem
-    assumption
-  have xy := Multiset.le_sup this
-  rw [y_sup] at xy
-  have xy: (⟨xv, xp⟩ : {x // x ∈ ymap m.points.val}) ≤ ⟨yv, yp⟩ := by
-    apply WithBot.coe_le_coe.mp
-    apply xy
-  have yx : yv < xv := by exact h
-  apply Lean.Omega.Int.le_lt_asymm
-  exact xy; assumption
-
-lemma height_le_of_proj : m.min_height ≤ m.max_height := by
+lemma height_min_le_max : m.min_height ≤ m.max_height := by
   unfold min_height
   unfold max_height
-  apply Subtype.GCongr.coe_le_coe
-  exact height_min_le_max m
+  unfold WithTop.untop
+  unfold WithBot.unbot
+  split ; case _ x' _ x _ x_inf _ =>
+  split ; case _ y' _ y _ y_sup _ =>
+  by_cases h : x ≤ y ; assumption
+  push_neg at h
+  exfalso
+  have : x ≤ y := by
+    apply WithBot.coe_le_coe.mp
+    unfold WithBot.some
+    rw [<- y_sup]
+    apply Multiset.le_sup
+    apply Multiset.mem_map.mpr
+    exists m.min_height
+    constructor
+    exact min_height_mem m
+    unfold min_height
+    unfold WithTop.untop
+    split
+    unfold WithBot.some
+    rw [<- x_inf]
+    symm
+    assumption
+  exact Lean.Omega.Int.le_lt_asymm this h
 
 def height := m.max_height - m.min_height |> Int.toNat
 
