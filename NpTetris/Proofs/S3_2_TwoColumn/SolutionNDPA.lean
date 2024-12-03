@@ -232,16 +232,29 @@ step state row shape := match (state, row, shape) with
   case val =>
     apply Set.image
     case s =>
-      have board : Board 2 k := {}
+      have board : Board 2 k := {} -- TODO constrain board based on number of filled rows
       exact {x ∈ shape.minos | board.at_top x.val}
     intro mino
     refine (?x, [stack_top])
     apply State.resolving
     case filled => exact fill + mino.val.height
-    case residue => sorry
-    case rlen => sorry
+    case residue =>
+      apply (List.range mino.val.height).map
+      intro row
+      have row := Int.ofNat row
+      by_cases (0, row) ∈ mino.val.points
+      case pos => exact some FilledColumn.Left
+      case neg =>
+      by_cases (1, row) ∈ mino.val.points
+      case pos => exact some FilledColumn.Right
+      case neg => exact none
+    case rlen =>
+      simp only [Int.ofNat_eq_coe, dite_eq_ite, List.length_map, List.length_range]
+      exact mino.height_le_k
   sorry
-| (State.resolving filled residue rlen, _, none) => sorry
+| (State.resolving filled residue rlen, stack_top, none) => match residue with
+  | x :: xs => if x == stack_top then sorry else sorry
+  | [] => ⟨{(State.ready filled, []) }, by apply Set.finite_singleton⟩
 | (_, _, _) => ⟨{}, Set.finite_empty⟩ -- no available transitions
 
 #print axioms machine

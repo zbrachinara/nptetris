@@ -13,6 +13,10 @@ smul a b := by
 
 #print axioms LeKMino.instSMul
 
+theorem LeKMino.height_le_k {k} (mino : LeKMino k) : mino.val.height ≤ k := calc
+  _ ≤ _ := mino.val.height_le_k
+  _ ≤ _ := mino.t.isLt
+
 @[simp]
 theorem lower_lekmino_val {b} (t : Transform) (p : LeKMino b) :
   (t • p).val = t • p.val := rfl
