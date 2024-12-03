@@ -200,6 +200,7 @@ theorem nonempty : Nonempty m.points := by
 
 def ys : Multiset ℤ := m.points.val.map Position.y
 
+-- TODO should generalize these two definitions
 /-- The maximum y-coordinate of the positions of a mino. -/
 def max_height : ℤ := by
   apply WithBot.unbot
@@ -244,6 +245,23 @@ def min_height : ℤ := by
     assumption
   exact pos neg
 
+theorem min_height_unpack :
+  ∃ x, (Multiset.map (WithTop.some ·) m.ys).inf = WithTop.some x ∧ m.min_height = x
+:= by
+  exists m.min_height
+  constructor
+  unfold min_height; unfold WithTop.untop; split
+  assumption
+  rfl
+theorem max_height_unpack :
+  ∃ x, (Multiset.map (WithBot.some ·) m.ys).sup = WithBot.some x ∧ m.max_height = x
+:= by
+  exists m.max_height
+  constructor
+  unfold max_height; unfold WithBot.unbot; split
+  assumption
+  rfl
+
 lemma min_height_mem : m.min_height ∈ m.ys := by
   have ⟨points, connected, card⟩ := m
   unfold min_height
@@ -265,7 +283,7 @@ lemma min_height_mem : m.min_height ∈ m.ys := by
       apply Connected.nonempty
       repeat assumption
     have : set.card = k' := by
-      -- TODO basically same proof as in SMul, generalize induction principle to avoid repetition
+      -- TODO basically same proof as in SMul, use new induction principle to avoid repetition
       unfold k'
       change _ = k.val - 1
       rw [<- card, Finset.card_insert_of_not_mem, Nat.add_one_sub_one]
@@ -307,32 +325,13 @@ lemma min_height_mem : m.min_height ∈ m.ys := by
     repeat assumption
 
 lemma height_min_le_max : m.min_height ≤ m.max_height := by
-  unfold min_height
-  unfold max_height
-  unfold WithTop.untop
-  unfold WithBot.unbot
-  split ; case _ x' _ x _ x_inf _ =>
-  split ; case _ y' _ y _ y_sup _ =>
-  by_cases h : x ≤ y ; assumption
-  push_neg at h
-  exfalso
-  have : x ≤ y := by
-    apply WithBot.coe_le_coe.mp
-    unfold WithBot.some
-    rw [<- y_sup]
-    apply Multiset.le_sup
-    apply Multiset.mem_map.mpr
-    exists m.min_height
-    constructor
-    exact min_height_mem m
-    unfold min_height
-    unfold WithTop.untop
-    split
-    unfold WithBot.some
-    rw [<- x_inf]
-    symm
-    assumption
-  exact Lean.Omega.Int.le_lt_asymm this h
+  have ⟨x, x_inf, xdef⟩ := m.min_height_unpack; subst x
+  have ⟨y, y_sup, ydef⟩ := m.max_height_unpack; subst y
+  apply WithBot.coe_le_coe.mp
+  rw [<- y_sup]
+  apply Multiset.le_sup
+  apply Multiset.mem_map_of_mem
+  exact min_height_mem m
 
 def height := m.max_height - m.min_height |> Int.toNat
 
@@ -344,15 +343,12 @@ lemma height_pos : m.height = m.max_height - m.min_height := by
   exact Int.sub_nonneg_of_le m.height_min_le_max
 
 theorem height_le_k : m.height ≤ k := by
+  apply Int.ofNat_le.mp
+  rw [height_pos]
+  have ⟨x, x_inf, _⟩ := m.min_height_unpack; subst x
+  have ⟨y, y_sup, _⟩ := m.max_height_unpack; subst y
   have ⟨points, conn, card⟩ := m
-  unfold height
-  unfold max_height
-  unfold min_height
-  unfold WithBot.unbot
-  unfold WithTop.untop
-  split
-  split
-  induction conn generalizing k with
+  induction conn using Connected.induction_nonoverlapping generalizing k with
   | triv => sorry
   | cons => sorry
 #print axioms height_le_k
